@@ -2,18 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { pageTitles } from '../data';
 import type { PageKey } from '../types';
 
-interface Props { page: PageKey; dark: boolean; onTheme: () => void; }
+interface Props { page: PageKey; dark: boolean; onTheme: () => void; notifCount?: number; lastUpdated?: string; }
 
-export const TopNav: React.FC<Props> = ({ page, dark, onTheme }) => {
+export const TopNav: React.FC<Props> = ({ page, dark, onTheme, notifCount = 0 }) => {
   const [now, setNow] = useState(new Date());
-  const [ago, setAgo] = useState(12);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  useEffect(() => {
-    const t = setInterval(() => setAgo(a => a >= 59 ? 0 : a + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
@@ -39,7 +34,7 @@ export const TopNav: React.FC<Props> = ({ page, dark, onTheme }) => {
       <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
         <span style={{ fontSize: 12.5, color: 'var(--ink-faint)', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          Updated {ago}s ago
+          Live
         </span>
 
         <button className="icon-btn" title="Toggle theme" onClick={onTheme}>
@@ -51,7 +46,9 @@ export const TopNav: React.FC<Props> = ({ page, dark, onTheme }) => {
 
         <button className="icon-btn" title="Notifications" style={{ position: 'relative' }}>
           <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-          <span style={{ position: 'absolute', top: -4, right: -4, background: 'var(--red)', color: '#fff', fontSize: 10, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)' }}>5</span>
+          {notifCount > 0 && (
+            <span style={{ position: 'absolute', top: -4, right: -4, background: 'var(--red)', color: '#fff', fontSize: 10, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)' }}>{notifCount}</span>
+          )}
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px 6px 6px', borderRadius: 24, border: '1px solid var(--border)', background: 'var(--surface-alt)' }}>

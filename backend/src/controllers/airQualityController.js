@@ -39,10 +39,7 @@ async function getHistory(req, res, next) {
  */
 async function getFloorComparison(req, res, next) {
   try {
-    const { location } = req.query;
-    if (!location) {
-      return res.status(400).json({ error: "Query parameter 'location' is required" });
-    }
+    const location = req.query.location || null;
     const result = await airQualityService.fetchFloorComparison(location);
     res.json(result);
   } catch (err) {

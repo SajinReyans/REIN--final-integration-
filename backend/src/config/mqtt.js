@@ -28,12 +28,22 @@ function createMqttClient() {
     const airTopic = process.env.MQTT_AIR_TOPIC || "air-quality/data";
     const noiseTopic = process.env.MQTT_NOISE_TOPIC || "noise/data";
     
-    // Subscribe to all topics
-    client.subscribe([weatherTopic, airTopic, noiseTopic], { qos: 1 }, (err) => {
+    // Subscribe to all topics including topic wildcards for noise sensors
+    const topicsToSubscribe = Array.from(new Set([
+      weatherTopic,
+      airTopic,
+      noiseTopic,
+      "noise/#",
+      "noise",
+      "noise_data",
+      "sensor/noise",
+    ]));
+
+    client.subscribe(topicsToSubscribe, { qos: 1 }, (err) => {
       if (err) {
         console.error("[ERROR] MQTT subscribe failed:", err.message);
       } else {
-        console.log(`[MQTT] Subscribed to ${weatherTopic}, ${airTopic}, and ${noiseTopic}`);
+        console.log(`[MQTT] Subscribed to ${topicsToSubscribe.join(", ")}`);
       }
     });
   });

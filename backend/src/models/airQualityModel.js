@@ -117,19 +117,31 @@ async function getLatestByFloor(location, floorLevel) {
  * @param {string} location
  * @returns {Promise<object[]>} One row per distinct floor_level, newest first
  */
-async function getFloorComparison(location) {
-  const query = `
-    SELECT DISTINCT ON (r.floor_level)
-      r.id, r.device_id, r.location, r.floor_level, r.timestamp,
-      r.pm1, r.pm25, r.pm4, r.pm10, r.co2, r.nox, r.voc, r.co, r.o3,
-      r.building_env_id, r.created_at,
-      e.temperature, e.humidity
-    FROM air_quality_readings r
-    LEFT JOIN building_environment e ON e.id = r.building_env_id
-    WHERE r.location = $1
-    ORDER BY r.floor_level, r.timestamp DESC;
-  `;
-  const { rows } = await pool.query(query, [location]);
+async function getFloorComparison(location = null) {
+  const query = location
+    ? `
+      SELECT DISTINCT ON (r.floor_level)
+        r.id, r.device_id, r.location, r.floor_level, r.timestamp,
+        r.pm1, r.pm25, r.pm4, r.pm10, r.co2, r.nox, r.voc, r.co, r.o3,
+        r.building_env_id, r.created_at,
+        e.temperature, e.humidity
+      FROM air_quality_readings r
+      LEFT JOIN building_environment e ON e.id = r.building_env_id
+      WHERE r.location = $1
+      ORDER BY r.floor_level, r.timestamp DESC;
+    `
+    : `
+      SELECT DISTINCT ON (r.floor_level)
+        r.id, r.device_id, r.location, r.floor_level, r.timestamp,
+        r.pm1, r.pm25, r.pm4, r.pm10, r.co2, r.nox, r.voc, r.co, r.o3,
+        r.building_env_id, r.created_at,
+        e.temperature, e.humidity
+      FROM air_quality_readings r
+      LEFT JOIN building_environment e ON e.id = r.building_env_id
+      ORDER BY r.floor_level, r.timestamp DESC;
+    `;
+  const values = location ? [location] : [];
+  const { rows } = await pool.query(query, values);
   return rows;
 }
 

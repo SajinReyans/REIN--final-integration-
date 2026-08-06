@@ -4,10 +4,9 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale,
   PointElement, LineElement, Filler, Tooltip, Legend,
 } from 'chart.js';
+import { useEnvironmentalData } from '../hooks/useEnvironmentalData';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
-
-const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const HERO_SLIDES = [
   '/dashboard-slides/slide-1.png',
@@ -15,7 +14,6 @@ const HERO_SLIDES = [
   '/dashboard-slides/slide-3.png',
   '/dashboard-slides/slide-4.png',
 ];
-
 const SLIDE_INTERVAL_MS = 4500;
 
 const baseOpts: any = {
@@ -28,13 +26,26 @@ const baseOpts: any = {
 };
 
 /* ---------- helpers ---------- */
-function KpiCard({ label, value, unit, status, statusLabel, color, sparkData, pct, dir, iconPath }: {
+function KpiCard({ label, value, unit, status, statusLabel, color, sparkData, iconPath }: {
   label: string; value: string; unit: string; status: string; statusLabel: string;
-  color: string; sparkData: number[]; pct: string; dir: 'up' | 'down'; iconPath: React.ReactNode;
+  color: string; sparkData: number[]; iconPath: React.ReactNode;
 }) {
+  // Compute trend direction from sparkline
+  const dir = sparkData.length >= 2 && sparkData[sparkData.length - 1] >= sparkData[sparkData.length - 2] ? 'up' : 'down';
+  const pct = sparkData.length >= 2
+    ? (Math.abs(sparkData[sparkData.length - 1] - sparkData[sparkData.length - 2]) / Math.max(sparkData[sparkData.length - 2], 1) * 100).toFixed(1) + '%'
+    : '—';
+
+  // Fill sparkline to 7 points if fewer readings
+  const displayData = sparkData.length === 0
+    ? [0, 0, 0, 0, 0, 0, 0]
+    : sparkData.length < 7
+      ? Array(7 - sparkData.length).fill(sparkData[0]).concat(sparkData)
+      : sparkData;
+
   const sparkChart = {
-    labels: sparkData.map((_, i) => i),
-    datasets: [{ data: sparkData, borderColor: color, borderWidth: 2, pointRadius: 0, tension: .4, fill: true, backgroundColor: color + '22' }],
+    labels: displayData.map((_, i) => i),
+    datasets: [{ data: displayData, borderColor: color, borderWidth: 2, pointRadius: 0, tension: .4, fill: true, backgroundColor: color + '22' }],
   };
   const sparkOpts: any = {
     responsive: true, maintainAspectRatio: false,
@@ -57,7 +68,7 @@ function KpiCard({ label, value, unit, status, statusLabel, color, sparkData, pc
         <Line data={sparkChart} options={sparkOpts} />
       </div>
       <div className={`trend ${dir}`} style={{ marginTop: 6 }}>
-        {dir === 'up' ? '▲' : '▼'} {pct} vs last week
+        {dir === 'up' ? '▲' : '▼'} {pct} vs last reading
       </div>
     </div>
   );
@@ -77,7 +88,7 @@ function AlertRow({ level, title, loc, time }: { level: string; title: string; l
   );
 }
 
-function HeroSlideshowCard() {
+function HeroSlideshowCard({ score, summary }: { score: number; summary: string }) {
   const [slide, setSlide] = useState(0);
 
   useEffect(() => {
@@ -86,6 +97,9 @@ function HeroSlideshowCard() {
     }, SLIDE_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, []);
+
+  const healthLabel = score >= 85 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Fair' : 'Needs Attention';
+  const scoreOffset = Math.max(0, Math.round(389.5 - (score / 100) * 389.5));
 
   return (
     <div
@@ -130,15 +144,25 @@ function HeroSlideshowCard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 32, position: 'relative', zIndex: 2 }}>
         <div style={{ maxWidth: 560 }}>
           <div style={{ fontSize: 12.5, letterSpacing: 1.5, textTransform: 'uppercase', opacity: .85, fontWeight: 600 }}>Overall Campus Environmental Health</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 700, marginTop: 6 }}>Excellent — Campus is thriving today</div>
-          <div style={{ marginTop: 14, fontSize: 14.5, opacity: .9, lineHeight: 1.6 }}>All 9 monitored zones report healthy conditions. Air quality is favorable across every building, ambient noise sits below policy thresholds, and weather conditions remain stable through the evening.</div>
-          <div style={{ marginTop: 18, fontStyle: 'italic', fontSize: 14, opacity: .85, borderLeft: '3px solid rgba(255,255,255,.5)', paddingLeft: 14 }}>"The campus breathes easiest when every sensor tells the same quiet story."</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 700, marginTop: 6 }}>
+            {score > 0 ? `${healthLabel} — ${summary}` : 'Connecting to sensor network…'}
+          </div>
+          <div style={{ marginTop: 14, fontSize: 14.5, opacity: .9, lineHeight: 1.6 }}>
+            {score > 0
+              ? `Live composite score across weather, air quality and noise modules. All readings refreshed every 3 seconds.`
+              : 'Starting the backend and waiting for ESP32 MQTT data. Values will populate automatically.'}
+          </div>
+          <div style={{ marginTop: 18, fontStyle: 'italic', fontSize: 14, opacity: .85, borderLeft: '3px solid rgba(255,255,255,.5)', paddingLeft: 14 }}>
+            &quot;The campus breathes easiest when every sensor tells the same quiet story.&quot;
+          </div>
         </div>
         <div style={{ flexShrink: 0, textAlign: 'center' }}>
           <svg width="150" height="150" viewBox="0 0 150 150">
             <circle cx="75" cy="75" r="62" stroke="rgba(255,255,255,.25)" strokeWidth="12" fill="none"/>
-            <circle cx="75" cy="75" r="62" stroke="#ffffff" strokeWidth="12" fill="none" strokeLinecap="round" strokeDasharray="389.5" strokeDashoffset="42" transform="rotate(-90 75 75)"/>
-            <text x="75" y="70" textAnchor="middle" fontFamily="Space Grotesk" fontSize="34" fontWeight="700" fill="#fff">89</text>
+            <circle cx="75" cy="75" r="62" stroke="#ffffff" strokeWidth="12" fill="none" strokeLinecap="round" strokeDasharray="389.5" strokeDashoffset={scoreOffset} transform="rotate(-90 75 75)"/>
+            <text x="75" y="70" textAnchor="middle" fontFamily="Space Grotesk" fontSize="34" fontWeight="700" fill="#fff">
+              {score > 0 ? score : '—'}
+            </text>
             <text x="75" y="92" textAnchor="middle" fontFamily="Inter" fontSize="12" fill="#fff" opacity=".85">Health Score</text>
           </svg>
         </div>
@@ -183,14 +207,60 @@ function HeroSlideshowCard() {
 }
 
 export const Dashboard: React.FC = () => {
+  const data = useEnvironmentalData();
+  const { weather, air, noise, history, compositeScore, lastUpdated } = data;
+
+  // Build labels for the history chart (most recent reading = rightmost point)
+  const histLen = Math.max(history.temperature.length, history.noiseLevel.length, history.aqi.length);
+  const labels = Array.from({ length: histLen }, (_, i) => `T-${histLen - 1 - i}`);
+
+  // Pad shorter arrays to the same length
+  const pad = (arr: number[], len: number) => arr.length < len ? Array(len - arr.length).fill(arr[0] ?? 0).concat(arr) : arr;
+
   const envData = {
-    labels: days,
+    labels: labels.length > 0 ? labels : ['—'],
     datasets: [
-      { label: 'AQI', data: [55,50,48,46,44,43,42], borderColor: '#1D6FA5', backgroundColor: '#1D6FA522', tension:.4, fill: true, pointRadius: 3 },
-      { label: 'Temp (°C)', data: [27,28,30,31,29,28,29], borderColor: '#E8A33D', backgroundColor: '#E8A33D11', tension:.4, fill: false, pointRadius: 3 },
-      { label: 'Noise (dB)', data: [52,51,49,50,48,47,48], borderColor: '#1F9D6C', backgroundColor: '#1F9D6C11', tension:.4, fill: false, pointRadius: 3 },
+      {
+        label: 'AQI',
+        data: pad(history.aqi, histLen),
+        borderColor: '#1D6FA5',
+        backgroundColor: '#1D6FA522',
+        tension: .4, fill: true, pointRadius: 3,
+      },
+      {
+        label: 'Temp (°C)',
+        data: pad(history.temperature, histLen),
+        borderColor: '#E8A33D',
+        backgroundColor: '#E8A33D11',
+        tension: .4, fill: false, pointRadius: 3,
+      },
+      {
+        label: 'Noise (dB)',
+        data: pad(history.noiseLevel, histLen),
+        borderColor: '#1F9D6C',
+        backgroundColor: '#1F9D6C11',
+        tension: .4, fill: false, pointRadius: 3,
+      },
     ],
   };
+
+  // Derive KPI display values
+  const tempValue = weather.metrics[0]?.value ?? '--';
+  const aqiValue = history.aqi.length > 0 ? history.aqi[history.aqi.length - 1].toFixed(0) : '--';
+  const noiseValue = noise.level > 0 ? noise.level.toFixed(1) : '--';
+  const weatherCondition = weather.condition !== 'Waiting for data' && weather.condition !== 'Connecting…' ? weather.condition : '--';
+
+  // Build alert rows from live alert data
+  const alertRows: { level: string; title: string; loc: string; time: string }[] = [];
+  if (weather.alerts.count > 0) {
+    alertRows.push({ level: 'warn', title: weather.alerts.message, loc: 'Campus Weather Station', time: lastUpdated });
+  }
+  noise.alerts
+    .filter(a => !a.ok)
+    .forEach(a => alertRows.push({ level: 'bad', title: a.title, loc: a.detail, time: lastUpdated }));
+  if (alertRows.length === 0) {
+    alertRows.push({ level: 'good', title: 'All systems normal', loc: 'No active alerts from sensors', time: lastUpdated });
+  }
 
   return (
     <>
@@ -211,43 +281,66 @@ export const Dashboard: React.FC = () => {
       />
 
       <div className="page-anim relative z-10 h-full overflow-y-auto" style={{ padding: 'var(--page-pad)' }}>
-      <HeroSlideshowCard />
+        <HeroSlideshowCard score={compositeScore} summary={weather.summary} />
 
-      <div className="grid-3 mt-24">
-        <KpiCard label="Air Quality Index" value="42" unit="AQI" status="good" statusLabel="Good" color="#1D6FA5" sparkData={[55,50,48,46,44,43,42]} pct="-6.1%" dir="up" iconPath={<><path d="M4 8h11a3 3 0 1 0-3-3"/><path d="M2 13h15a3 3 0 1 1-3 3"/><path d="M4 18h9a2.5 2.5 0 1 1-2.5 2.5"/></>} />
-        <KpiCard label="Weather" value="29°C" unit="Partly Cloudy" status="info" statusLabel="Stable" color="#E8A33D" sparkData={[27,28,30,31,29,28,29]} pct="+0.8%" dir="up" iconPath={<path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4-2A5 5 0 0 0 6.5 19h11z"/>} />
-        <KpiCard label="Noise Level" value="48" unit="dB(A)" status="good" statusLabel="Quiet" color="#124C74" sparkData={[52,51,49,50,48,47,48]} pct="-3.4%" dir="up" iconPath={<><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></>} />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--grid-gap)', marginTop: 'var(--section-gap)' }}>
-        <div className="card">
-          <div className="flex-between">
-            <div>
-              <div className="section-title" style={{ fontSize: 17 }}>Environmental Trend</div>
-              <div className="section-sub" style={{ marginBottom: 0 }}>7-day composite of AQI, temperature and noise</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-outline" style={{ padding: '7px 14px', fontSize: 12.5 }}>7D</button>
-              <button className="btn btn-primary" style={{ padding: '7px 14px', fontSize: 12.5 }}>30D</button>
-            </div>
-          </div>
-          <div style={{ height: 280, marginTop: 12 }}>
-            <Line data={envData} options={baseOpts} />
-          </div>
+        <div className="grid-3 mt-24">
+          <KpiCard
+            label="Air Quality Index"
+            value={aqiValue}
+            unit="AQI"
+            status={air.score >= 80 ? 'good' : air.score >= 60 ? 'info' : 'warn'}
+            statusLabel={air.score > 0 ? (air.score >= 80 ? 'Good' : 'Moderate') : 'Connecting'}
+            color="#1D6FA5"
+            sparkData={history.aqi}
+            iconPath={<><path d="M4 8h11a3 3 0 1 0-3-3"/><path d="M2 13h15a3 3 0 1 1-3 3"/><path d="M4 18h9a2.5 2.5 0 1 1-2.5 2.5"/></>}
+          />
+          <KpiCard
+            label="Temperature"
+            value={String(tempValue)}
+            unit={`°C · ${weatherCondition}`}
+            status={weather.alerts.count > 0 ? 'warn' : 'info'}
+            statusLabel={weather.alerts.count === 0 ? 'Stable' : 'Alert'}
+            color="#E8A33D"
+            sparkData={history.temperature}
+            iconPath={<path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4-2A5 5 0 0 0 6.5 19h11z"/>}
+          />
+          <KpiCard
+            label="Noise Level"
+            value={noiseValue}
+            unit="dB(A)"
+            status={noise.categoryTier === 'high' ? 'warn' : 'good'}
+            statusLabel={noise.category !== 'Connecting…' ? noise.category : 'Connecting'}
+            color="#124C74"
+            sparkData={history.noiseLevel}
+            iconPath={<><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></>}
+          />
         </div>
 
-        <div className="card">
-          <div className="section-title" style={{ fontSize: 17 }}>Recent Alerts</div>
-          <div className="section-sub">Auto-generated from sensor thresholds</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            <AlertRow level="bad"  title="Noise threshold exceeded"  loc="Block C · Library Annex"   time="4m ago" />
-            <AlertRow level="warn" title="AQI trending upward"       loc="Block A · Engineering"     time="22m ago" />
-            <AlertRow level="warn" title="Sensor signal weak"        loc="Node 14 · Hostel Wing 2"   time="41m ago" />
-            <AlertRow level="good" title="Air quality restored"      loc="Block D · Cafeteria"       time="1h ago" />
-            <AlertRow level="info" title="Scheduled maintenance"     loc="Weather Station 02"        time="2h ago" />
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--grid-gap)', marginTop: 'var(--section-gap)' }}>
+          <div className="card">
+            <div className="flex-between">
+              <div>
+                <div className="section-title" style={{ fontSize: 17 }}>Live Environmental Trend</div>
+                <div className="section-sub" style={{ marginBottom: 0 }}>
+                  {histLen > 1 ? `Last ${histLen} readings — AQI, temperature and noise` : 'Waiting for readings to build chart…'}
+                </div>
+              </div>
+            </div>
+            <div style={{ height: 280, marginTop: 12 }}>
+              <Line data={envData} options={baseOpts} />
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="section-title" style={{ fontSize: 17 }}>Active Alerts</div>
+            <div className="section-sub">Auto-generated from sensor thresholds</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {alertRows.map((a, i) => (
+                <AlertRow key={i} level={a.level} title={a.title} loc={a.loc} time={a.time} />
+              ))}
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   );

@@ -279,51 +279,100 @@ function validateAirQualityPayload(payload) {
  * Returns { valid: boolean, errors: string[], data: object|null }
  */
 function validateNoisePayload(payload) {
-  const errors = [];
-
   if (!payload || typeof payload !== "object") {
     return { valid: false, errors: ["Payload must be a JSON object"], data: null };
   }
 
-  const {
-    deviceId,
-    location,
-    timestamp,
-    noiseLevel,
-  } = payload;
-
-  // ── Device & location ─────────────────────────────────────────────────────
+  // ── deviceId ──────────────────────────────────────────────────────────────
+  let deviceId = payload.deviceId ?? payload.device_id ?? payload.device ?? payload.id ?? payload.sensorId ?? payload.sensor_id;
   if (typeof deviceId !== "string" || deviceId.trim().length === 0) {
-    errors.push("deviceId is required and must be a non-empty string");
-  }
-  if (typeof location !== "string" || location.trim().length === 0) {
-    errors.push("location is required and must be a non-empty string");
+    deviceId = "noise-sensor-01";
+  } else {
+    deviceId = deviceId.trim();
   }
 
-  // ── Timestamp ─────────────────────────────────────────────────────────────
-  if (typeof timestamp !== "string" || Number.isNaN(Date.parse(timestamp))) {
-    errors.push("timestamp is required and must be a valid ISO 8601 timestamp");
+  // ── location ──────────────────────────────────────────────────────────────
+  let location = payload.location ?? payload.loc ?? payload.place;
+  if (typeof location !== "string" || location.trim().length === 0) {
+    location = "campus";
+  } else {
+    location = location.trim();
+  }
+
+  // ── timestamp ─────────────────────────────────────────────────────────────
+  let timestamp = payload.timestamp ?? payload.time ?? payload.createdAt ?? payload.created_at;
+  if (typeof timestamp === "number") {
+    timestamp = new Date(timestamp).toISOString();
+  } else if (typeof timestamp !== "string" || Number.isNaN(Date.parse(timestamp))) {
+    timestamp = new Date().toISOString();
   }
 
   // ── Noise Level (dB) ──────────────────────────────────────────────────────
-  if (typeof noiseLevel !== "number" || Number.isNaN(noiseLevel)) {
-    errors.push("noiseLevel is required and must be numeric");
-  } else if (noiseLevel < 0 || noiseLevel > 200) {
-    errors.push("noiseLevel must be between 0 and 200 dB");
+  // Arduino / ESP32 C++ sends: doc.createNestedObject("noise")["noiseLevel"] = noiseLevel
+  let rawNoiseLevel;
+
+  // 1) First check nested object shapes (Arduino JSON)
+  if (payload.noise && typeof payload.noise === "object") {
+    rawNoiseLevel =
+      payload.noise.noiseLevel ??
+      payload.noise.noiselevel ??
+      payload.noise.noise_level ??
+      payload.noise.noise_level_db ??
+      payload.noise.noiseLevelDb ??
+      payload.noise.db ??
+      payload.noise.decibels ??
+      payload.noise.level ??
+      payload.noise.soundLevel ??
+      payload.noise.sound_level ??
+      payload.noise.value;
+  } else if (payload.data && typeof payload.data === "object") {
+    rawNoiseLevel =
+      payload.data.noiseLevel ??
+      payload.data.noiselevel ??
+      payload.data.noise_level ??
+      payload.data.noise_level_db ??
+      payload.data.noiseLevelDb ??
+      payload.data.noise ??
+      payload.data.db ??
+      payload.data.decibels ??
+      payload.data.level ??
+      payload.data.value;
   }
 
-  if (errors.length > 0) {
-    return { valid: false, errors, data: null };
+  // 2) If not found in a nested object, check top-level properties
+  if (rawNoiseLevel === undefined || rawNoiseLevel === null) {
+    rawNoiseLevel =
+      payload.noiseLevel ??
+      payload.noiselevel ??
+      payload.noise_level ??
+      payload.noise_level_db ??
+      payload.noiseLevelDb ??
+      (typeof payload.noise === "number" ? payload.noise : undefined) ??
+      payload.db ??
+      payload.decibels ??
+      payload.level ??
+      payload.soundLevel ??
+      payload.sound_level ??
+      payload.value;
+  }
+
+  const resolvedNoiseLevel = Number(rawNoiseLevel);
+
+  if (!Number.isFinite(resolvedNoiseLevel)) {
+    return { valid: false, errors: ["noiseLevel is required and must be numeric"], data: null };
+  }
+  if (resolvedNoiseLevel < 0 || resolvedNoiseLevel > 200) {
+    return { valid: false, errors: ["noiseLevel must be between 0 and 200 dB"], data: null };
   }
 
   return {
     valid: true,
     errors: [],
     data: {
-      deviceId: deviceId.trim(),
-      location: location.trim(),
+      deviceId,
+      location,
       timestamp,
-      noiseLevelDb: noiseLevel, // maps to noise_level_db
+      noiseLevelDb: resolvedNoiseLevel,
     },
   };
 }

@@ -52,18 +52,11 @@ const AIR_PAGE_BG = {
   backgroundRepeat: 'no-repeat',
 };
 
-const HUMIDITY_BARS = [
-  { time: '08:00', h: 42 },
-  { time: '10:00', h: 55 },
-  { time: '12:00', h: 88 },
-  { time: '14:00', h: 62 },
-  { time: '16:00', h: 48 },
-  { time: '18:00', h: 70 },
-  { time: '20:00', h: 38 },
-];
+// HUMIDITY_BARS removed — live humidity readings come from the useEnvironmentalData() history buffer.
 
 function AreaStatChart({ color, data }: { color: string; data?: number[] }) {
-  const values = data ?? [42, 38, 55, 72, 48, 35, 52];
+  const rawValues = data && data.length > 0 ? data : [42, 38, 55, 72, 48, 35, 52];
+  const values = rawValues.length === 1 ? [rawValues[0], rawValues[0]] : rawValues;
   const w = 240;
   const h = 72;
   const padX = 8;
@@ -72,11 +65,17 @@ function AreaStatChart({ color, data }: { color: string; data?: number[] }) {
   const max = Math.max(...values);
   const range = Math.max(max - min, 1);
 
+  const divisor = Math.max(values.length - 1, 1);
   const points = values.map((v, i) => {
-    const x = padX + (i / (values.length - 1)) * (w - padX * 2);
+    const x = padX + (i / divisor) * (w - padX * 2);
     const y = padY + (1 - (v - min) / range) * (h - padY * 2);
-    return { x, y };
+    return { x: Number.isFinite(x) ? x : padX, y: Number.isFinite(y) ? y : h / 2 };
   });
+
+  if (points.length === 0) return null;
+
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
 
   const linePath = points
     .map((p, i) => {
@@ -87,7 +86,7 @@ function AreaStatChart({ color, data }: { color: string; data?: number[] }) {
     })
     .join(' ');
 
-  const areaPath = `${linePath} L ${points[points.length - 1].x},${h - 2} L ${points[0].x},${h - 2} Z`;
+  const areaPath = `${linePath} L ${lastPoint.x},${h - 2} L ${firstPoint.x},${h - 2} Z`;
   const gridYs = [0.2, 0.45, 0.7].map((t) => padY + t * (h - padY * 2));
   const fillId = `area-fill-${color.replace('#', '')}`;
 
@@ -108,21 +107,11 @@ function AreaStatChart({ color, data }: { color: string; data?: number[] }) {
           y2={y}
           className="stroke-[#e2e8f0] dark:stroke-[#2a2a2a]"
           strokeWidth="1"
+          strokeDasharray="3 3"
         />
       ))}
       <path d={areaPath} fill={`url(#${fillId})`} />
       <path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      {points.map((p) => (
-        <circle
-          key={`${p.x}-${p.y}`}
-          cx={p.x}
-          cy={p.y}
-          r="3.2"
-          className="fill-white dark:fill-[#141414]"
-          stroke={color}
-          strokeWidth="2"
-        />
-      ))}
     </svg>
   );
 }
@@ -200,7 +189,7 @@ function WeatherMetricTile({
   );
 }
 
-function HeatAdvisoryTile({ count, message }: { count: number; message: string }) {
+export function HeatAdvisoryTile({ count, message }: { count: number; message: string }) {
   return (
     <article
       className={cn(
@@ -222,14 +211,6 @@ function HeatAdvisoryTile({ count, message }: { count: number; message: string }
         {count} Active
       </p>
       <p className="mt-2 line-clamp-3 text-[11px] leading-snug text-[var(--ink-soft)]">{message}</p>
-      <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
-        <button type="button" className="rounded-md bg-red-500 px-2.5 py-1 text-[10px] font-semibold text-white transition hover:bg-red-600">
-          Details
-        </button>
-        <button type="button" className="rounded-md bg-red-100 px-2.5 py-1 text-[10px] font-semibold text-red-500 transition hover:bg-red-200/80 dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900/60">
-          Dismiss
-        </button>
-      </div>
     </article>
   );
 }
@@ -304,39 +285,45 @@ function SevenDayOutlook({ days, metric, onUnit }: { days: ForecastDay[]; metric
   );
 }
 
-function HumidityTrendsCard() {
-  const peak = Math.max(...HUMIDITY_BARS.map((b) => b.h));
+function HumidityTrendsCard({ humidityHistory }: { humidityHistory: number[] }) {
+  const bars = humidityHistory.length > 0
+    ? humidityHistory.map((h, i) => ({ label: `T-${humidityHistory.length - 1 - i}`, h: Math.round(h) }))
+    : Array(7).fill({ label: '—', h: 0 });
+  const peak = Math.max(...bars.map((b) => b.h), 1);
 
   return (
     <article className={cn(EP_CARD, 'flex min-h-[160px] flex-col')} style={EP_PAD_STYLE} aria-label="Humidity and precipitation trends">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="min-w-0 flex-1 text-sm font-bold text-[var(--ink)]">Humidity &amp; Precipitation Trends</h3>
+        <h3 className="min-w-0 flex-1 text-sm font-bold text-[var(--ink)]">Humidity & Precipitation Trends</h3>
         <Cloud className="h-4 w-4 shrink-0 text-[var(--ink-faint)]" strokeWidth={1.75} aria-hidden="true" />
       </div>
       <div className="mt-3 flex min-h-0 flex-1 items-end gap-1.5 sm:gap-2">
-        {HUMIDITY_BARS.map((b) => {
-          const active = b.h === peak;
+        {bars.map((b, i) => {
+          const active = b.h === peak && b.h > 0;
           return (
-            <div key={b.time} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+            <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
               <div className="flex h-20 w-full items-end justify-center sm:h-24">
                 <div
                   className={cn(
                     'w-[70%] max-w-[28px] rounded-t-md',
                     active ? 'bg-emerald-500' : 'bg-neutral-300 dark:bg-neutral-600',
                   )}
-                  style={{ height: `${(b.h / 100) * 100}%` }}
+                  style={{ height: `${b.h > 0 ? (b.h / 100) * 100 : 3}%` }}
                 />
               </div>
-              <span className="text-[9px] font-medium text-[var(--ink-faint)]">{b.time}</span>
+              <span className="text-[9px] font-medium text-[var(--ink-faint)]">{b.h > 0 ? `${b.h}%` : '—'}</span>
             </div>
           );
         })}
       </div>
+      {humidityHistory.length === 0 && (
+        <p className="mt-2 text-center text-[11px] text-[var(--ink-faint)]">Waiting for humidity readings…</p>
+      )}
     </article>
   );
 }
 
-function AIProjectionCard() {
+function AIProjectionCard({ prediction }: { prediction?: { text: string; confidence: number } | null }) {
   return (
     <article className={cn(EP_CARD, 'flex flex-col')} style={EP_PAD_STYLE} aria-label="AI projection">
       <div className="flex items-start gap-3">
@@ -346,24 +333,34 @@ function AIProjectionCard() {
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-bold text-[var(--ink)]">AI Projection</h3>
           <p className="mt-1 text-[12px] leading-snug text-[var(--ink-soft)]">
-            Predictive modeling suggests a 12% decrease in relative humidity over the next 6 hours.
+            {prediction?.text ?? 'ML predictions will appear here once the model publishes to /api/weather/predictions/latest.'}
           </p>
         </div>
       </div>
-      <div className="mt-3">
-        <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-semibold">
-          <span className="text-[var(--ink-faint)]">Confidence Interval</span>
-          <span className="shrink-0 text-emerald-600 dark:text-emerald-400">75%</span>
+      {prediction && (
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-semibold">
+            <span className="text-[var(--ink-faint)]">Confidence Interval</span>
+            <span className="shrink-0 text-emerald-600 dark:text-emerald-400">{(prediction.confidence * 100).toFixed(0)}%</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-alt)]">
+            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${(prediction.confidence * 100).toFixed(0)}%` }} />
+          </div>
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-alt)]">
-          <div className="h-full rounded-full bg-emerald-500" style={{ width: '75%' }} />
-        </div>
-      </div>
+      )}
     </article>
   );
 }
 
-function WindVectorCard() {
+function degreesToCompass(deg: number): string {
+  const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+
+function WindVectorCard({ speedMs, directionDeg }: { speedMs: number; directionDeg: number }) {
+  const compass = degreesToCompass(directionDeg);
+  const kmh = (speedMs * 3.6).toFixed(1);
+  const label = speedMs > 0 ? `${compass} ${kmh} km/h` : 'Connecting…';
   return (
     <article className={cn(EP_CARD, 'flex items-center gap-3')} style={EP_PAD_STYLE} aria-label="Wind vector">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400" aria-hidden="true">
@@ -371,7 +368,7 @@ function WindVectorCard() {
       </div>
       <div className="min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-faint)]">Wind Vector</p>
-        <p className="mt-0.5 text-base font-bold text-[var(--ink)]">NW 14.5 km/h</p>
+        <p className="mt-0.5 text-base font-bold text-[var(--ink)]">{label}</p>
       </div>
     </article>
   );
@@ -380,13 +377,42 @@ function WindVectorCard() {
 /* ── Weather page ── */
 
 export function WeatherPageLayout() {
-  const { weather, lastUpdated } = useEnvironmentalData();
+  const { weather, lastUpdated, history } = useEnvironmentalData();
   const [metric, setMetric] = useState(true);
+  const [weatherPrediction, setWeatherPrediction] = useState<{ text: string; confidence: number } | null>(null);
 
-  const temp = weather.metrics.find((m) => m.id === 'temp')!;
-  const heat = weather.metrics.find((m) => m.id === 'heat')!;
-  const dew = weather.metrics.find((m) => m.id === 'dew')!;
-  const quoteLine = `"${weather.quote[0]}" "${weather.quote[1]}"`;
+  // Fetch the latest ML weather prediction from the backend
+  useEffect(() => {
+    const base = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.replace(/\/$/, '') ?? '';
+    fetch(`${base}/api/weather/predictions/latest`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p: any) => {
+        if (p?.predicted_temperature != null) {
+          setWeatherPrediction({
+            text: `Predicted ${Number(p.predicted_temperature).toFixed(1)} °C · ${p.predicted_weather_status ?? ''}`.trim().replace(/·\s*$/, ''),
+            confidence: Number(p.confidence_score ?? 0),
+          });
+        }
+      })
+      .catch(() => null);
+  }, []);
+
+  const temp = weather.metrics.find((m) => m.id === 'temp');
+  const skyMetric = weather.metrics.find((m) => m.id === 'sky');
+
+  // Parse live wind speed + direction
+  let windSpeedMs = weather.details?.windSpeed ?? 0;
+  let windDirDeg = weather.details?.windDirection ?? 0;
+  if (!windSpeedMs && skyMetric?.supportingText) {
+    const wm = skyMetric.supportingText.match(/Wind ([\d.]+) m\/s.*Dir ([\d.]+)°/);
+    if (wm) { windSpeedMs = parseFloat(wm[1]); windDirDeg = parseFloat(wm[2]); }
+  }
+
+  const tempVal = weather.details?.temperature != null && weather.details.temperature !== 0 ? weather.details.temperature.toFixed(1) : String(temp?.value ?? '--');
+  const humVal = weather.details?.humidity != null && weather.details.humidity !== 0 ? weather.details.humidity.toFixed(0) : '--';
+  const rainVal = weather.details?.rainfall != null ? weather.details.rainfall.toFixed(1) : '0.0';
+
+  const quoteLine = weather.quote ? `"${weather.quote[0]}" "${weather.quote[1]}"` : '"Today\'s weather shapes your plans and well-being."';
 
   return (
     <>
@@ -451,44 +477,62 @@ export function WeatherPageLayout() {
 
           <WeatherHealthBanner score={weather.score} description={weather.healthDescription} />
 
-          <div className={cn('mx-auto grid w-full max-w-4xl grid-cols-2 sm:grid-cols-4', GRID_GAP)}>
+          {/* Primary Weather Parameters Grid: Temperature, Humidity, Rainfall, Wind Speed, Wind Direction */}
+          <div className={cn('grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5', GRID_GAP)}>
             <WeatherMetricTile
               label="Temperature"
-              value={String(temp.value)}
-              unit={temp.unit}
+              value={tempVal}
+              unit="°C"
               icon={Thermometer}
               iconTint="blue"
               sparkColor="#10b981"
-              chartData={[27, 28, 30, 31, 29, 28, 29.4]}
+              chartData={history.temperature}
             />
             <WeatherMetricTile
-              label="Heat Index"
-              value={String(heat.value)}
-              unit={heat.unit}
-              icon={Sun}
-              iconTint="orange"
-              sparkColor="#f97316"
-              chartData={[29, 30, 32, 33, 31, 30, 31.2]}
-            />
-            <WeatherMetricTile
-              label="Dew Point"
-              value={String(dew.value)}
-              unit={dew.unit}
+              label="Humidity"
+              value={humVal}
+              unit="%"
               icon={Droplets}
               iconTint="cyan"
               sparkColor="#14b8a6"
-              chartData={[16, 17, 19, 20, 18, 17, 18.5]}
+              chartData={history.humidity}
             />
-            <HeatAdvisoryTile count={weather.alerts.count} message={weather.alerts.message} />
+            <WeatherMetricTile
+              label="Rainfall"
+              value={rainVal}
+              unit="mm"
+              icon={CloudRain}
+              iconTint="orange"
+              sparkColor="#f59e0b"
+              chartData={[0, 0, Number(rainVal)]}
+            />
+            <WeatherMetricTile
+              label="Wind Speed"
+              value={windSpeedMs.toFixed(1)}
+              unit="m/s"
+              icon={Wind}
+              iconTint="cyan"
+              sparkColor="#10b981"
+              chartData={[0, windSpeedMs]}
+            />
+            <WeatherMetricTile
+              label="Wind Direction"
+              value={`${windDirDeg.toFixed(0)}°`}
+              unit={degreesToCompass(windDirDeg)}
+              icon={Wind}
+              iconTint="orange"
+              sparkColor="#f97316"
+              chartData={[windDirDeg]}
+            />
           </div>
 
           <SevenDayOutlook days={weather.forecast} metric={metric} onUnit={setMetric} />
 
           <div className={cn('grid grid-cols-1 pb-2 lg:grid-cols-[1.55fr_1fr]', GRID_GAP)}>
-            <HumidityTrendsCard />
+            <HumidityTrendsCard humidityHistory={history.humidity} />
             <div className={cn('flex flex-col', GRID_GAP)}>
-              <AIProjectionCard />
-              <WindVectorCard />
+              <AIProjectionCard prediction={weatherPrediction} />
+              <WindVectorCard speedMs={windSpeedMs} directionDeg={windDirDeg} />
             </div>
           </div>
         </div>
@@ -639,7 +683,7 @@ const AIR_LEGEND: { label: string; color: string; darkColor: string }[] = [
   { label: 'Hazardous', color: '#991b1b', darkColor: '#f87171' },
 ];
 
-function AirHealthScoreCard({ score, healthDescription }: { score: number; healthDescription: string }) {
+function AirHealthScoreCard({ score, healthDescription, category }: { score: number; healthDescription: string; category: string }) {
   const dark = useIsDark();
 
   return (
@@ -662,7 +706,7 @@ function AirHealthScoreCard({ score, healthDescription }: { score: number; healt
         />
       </div>
       <p className={cn('mt-4 text-[1.35rem] font-bold', dark ? 'text-emerald-400' : 'text-[#2563eb]')}>
-        Good
+        {category || 'Live'}
       </p>
       <p className="mt-1 max-w-[240px] text-[12px] leading-snug text-[var(--ink-soft)]">{healthDescription}</p>
       <button
@@ -760,13 +804,69 @@ export function AirPageLayout() {
                   ))}
                 </div>
               </section>
+              {air.floors && air.floors.length > 0 && (
+                <section aria-label="Floor comparison" className="min-w-0">
+                  <AirSectionTitle
+                    title="Per-Floor Comparison"
+                    subtitle="Multi-level building environment sensors (Bottom vs Top Floor)."
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {air.floors.map((fl) => (
+                      <article key={fl.floorLevel} className={cn(EP_CARD, 'rounded-[16px] p-5')}>
+                        <div className="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-3">
+                          <h3 className="text-base font-bold capitalize text-[#1e3a5f] dark:text-white">
+                            {fl.floorLevel} Floor
+                          </h3>
+                          <span className="text-[11px] font-mono text-[var(--ink-faint)]">
+                            {fl.timestamp ? new Date(fl.timestamp).toLocaleTimeString() : 'Live'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 text-center">
+                          <div className="p-2 rounded-lg bg-[var(--surface-alt)]">
+                            <span className="block text-[10px] uppercase font-bold text-[var(--ink-faint)]">PM2.5</span>
+                            <span className="text-lg font-bold text-[var(--ink)] tabular-nums">{fl.pm25}</span>
+                            <span className="block text-[9px] text-[var(--ink-faint)]">µg/m³</span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-[var(--surface-alt)]">
+                            <span className="block text-[10px] uppercase font-bold text-[var(--ink-faint)]">PM10</span>
+                            <span className="text-lg font-bold text-[var(--ink)] tabular-nums">{fl.pm10}</span>
+                            <span className="block text-[9px] text-[var(--ink-faint)]">µg/m³</span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-[var(--surface-alt)]">
+                            <span className="block text-[10px] uppercase font-bold text-[var(--ink-faint)]">CO₂</span>
+                            <span className="text-lg font-bold text-[var(--ink)] tabular-nums">{fl.co2}</span>
+                            <span className="block text-[9px] text-[var(--ink-faint)]">ppm</span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-[var(--surface-alt)]">
+                            <span className="block text-[10px] uppercase font-bold text-[var(--ink-faint)]">NOx</span>
+                            <span className="text-lg font-bold text-[var(--ink)] tabular-nums">{fl.nox}</span>
+                            <span className="block text-[9px] text-[var(--ink-faint)]">ppb</span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-[var(--surface-alt)]">
+                            <span className="block text-[10px] uppercase font-bold text-[var(--ink-faint)]">VOC</span>
+                            <span className="text-lg font-bold text-[var(--ink)] tabular-nums">{fl.voc}</span>
+                            <span className="block text-[9px] text-[var(--ink-faint)]">idx</span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-[var(--surface-alt)]">
+                            <span className="block text-[10px] uppercase font-bold text-[var(--ink-faint)]">CO</span>
+                            <span className="text-lg font-bold text-[var(--ink)] tabular-nums">{fl.co}</span>
+                            <span className="block text-[9px] text-[var(--ink-faint)]">ppm</span>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
 
             <aside className={cn('flex min-w-0 flex-col', GRID_GAP)}>
-              <AirHealthScoreCard score={air.score} healthDescription={air.healthDescription} />
-              <AboutAirCard
-                aboutDescription="Current particulate levels and atmospheric gas concentrations across monitored campus zones."
+              <AirHealthScoreCard
+                score={air.score}
+                healthDescription={air.healthDescription}
+                category={air.healthDescription.split(' · ')[0] || 'Live'}
               />
+              <AboutAirCard aboutDescription={air.aboutDescription} />
             </aside>
           </div>
         </div>
@@ -796,10 +896,10 @@ const NOISE_CATEGORIES: {
   color: string;
   darkColor: string;
 }[] = [
-  { id: 'low', label: 'Low', range: '< 55 dB(A)', color: '#22c55e', darkColor: '#34d399' },
-  { id: 'moderate', label: 'Moderate', range: '55–70 dB(A)', color: '#f59e0b', darkColor: '#fbbf24' },
-  { id: 'high', label: 'High', range: '> 70 dB(A)', color: '#ef4444', darkColor: '#f87171' },
-];
+    { id: 'low', label: 'Low', range: '< 55 dB(A)', color: '#22c55e', darkColor: '#34d399' },
+    { id: 'moderate', label: 'Moderate', range: '55–70 dB(A)', color: '#f59e0b', darkColor: '#fbbf24' },
+    { id: 'high', label: 'High', range: '> 70 dB(A)', color: '#ef4444', darkColor: '#f87171' },
+  ];
 
 function NoiseLevelCard({
   level,
@@ -908,7 +1008,7 @@ function NoiseCategoryCard({ activeTier }: { activeTier: 'low' | 'moderate' | 'h
   );
 }
 
-function NoiseHealthScoreCard({ score, subtitle }: { score: number; subtitle: string }) {
+function NoiseHealthScoreCard({ score, subtitle, category }: { score: number; subtitle: string; category: string }) {
   const dark = useIsDark();
 
   return (
@@ -930,7 +1030,7 @@ function NoiseHealthScoreCard({ score, subtitle }: { score: number; subtitle: st
           trackColor={dark ? '#2a2a2a' : '#e2e8f0'}
         />
         <p className={cn('mt-3 text-[1.25rem] font-bold', dark ? 'text-emerald-400' : 'text-[#2563eb]')}>
-          Good
+          {category || 'Live'}
         </p>
         <p className="mt-1 max-w-[200px] text-[12px] leading-snug text-[var(--ink-soft)]">{subtitle}</p>
       </div>
@@ -1067,7 +1167,7 @@ export function NoisePageLayout() {
             </div>
 
             <aside className={cn('flex min-w-0 flex-col', NOISE_GAP)}>
-              <NoiseHealthScoreCard score={noise.score} subtitle={noise.scoreSubtitle} />
+              <NoiseHealthScoreCard score={noise.score} subtitle={noise.scoreSubtitle} category={noise.category} />
               <div className="min-h-0 flex-1">
                 <NoiseAlertsCard alerts={noise.alerts} />
               </div>

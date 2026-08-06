@@ -42,7 +42,7 @@ async function getLatestReading() {
   const query = `
     SELECT id, device_id, location, timestamp, noise_level_db, created_at
     FROM noise_readings
-    ORDER BY timestamp DESC
+    ORDER BY created_at DESC, timestamp DESC
     LIMIT 1;
   `;
   const { rows } = await pool.query(query);
@@ -60,7 +60,7 @@ async function getHistory({ limit, offset }) {
   const query = `
     SELECT id, device_id, location, timestamp, noise_level_db, created_at
     FROM noise_readings
-    ORDER BY timestamp DESC
+    ORDER BY created_at DESC, timestamp DESC
     LIMIT $1 OFFSET $2;
   `;
   const { rows } = await pool.query(query, [limit, offset]);
@@ -95,7 +95,7 @@ async function getRecentReadings(limit = 50) {
   const query = `
     SELECT id, device_id, location, timestamp, noise_level_db, created_at
     FROM noise_readings
-    ORDER BY timestamp DESC
+    ORDER BY created_at DESC, timestamp DESC
     LIMIT $1;
   `;
   const { rows } = await pool.query(query, [limit]);

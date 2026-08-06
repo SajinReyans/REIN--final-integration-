@@ -11,9 +11,11 @@ import { Management } from './pages/Management';
 import { Analytics } from './pages/Analytics';
 import { AIInsights } from './pages/AIInsights';
 import { LandingPage } from './pages/LandingPage';
+import { useEnvironmentalData } from './hooks/useEnvironmentalData';
 import type { PageKey } from './types';
 
 export default function App() {
+  const { systemAlerts } = useEnvironmentalData();
   const [showLanding, setShowLanding] = useState(true);
   const [revealing, setRevealing] = useState(false);
   const [page, setPage] = useState<PageKey>('dashboard');
@@ -74,7 +76,7 @@ export default function App() {
           }}
         >
           <Sidebar active={page} onNav={setPage} />
-          <TopNav page={page} dark={dark} onTheme={() => setDark(d => !d)} />
+          <TopNav page={page} dark={dark} onTheme={() => setDark(d => !d)} notifCount={systemAlerts} />
           <main
             style={{
               marginLeft: 'var(--sidebar-w)',
