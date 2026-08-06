@@ -1,0 +1,25 @@
+<header class="border-b border-station-line bg-station-panel/60 backdrop-blur sticky top-0 z-10">
+  <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between flex-wrap gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-sm border border-cyan-signal/50 flex items-center justify-center font-mono text-cyan-signal text-sm">
+        WX
+      </div>
+      <div>
+        <h1 class="font-display text-lg md:text-xl tracking-wide">ESP32 Weather Monitoring System</h1>
+        <p class="text-xs text-station-muted font-mono">station telemetry &middot; local network</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-4 font-mono text-xs">
+      <div id="live-badge" class="px-2.5 py-1 rounded-sm border border-station-line text-station-muted">
+        <span class="status-dot status-dot-off mr-1.5" id="live-dot"></span><span id="live-text">CONNECTING</span>
+      </div>
+      <div class="flex items-center gap-1.5 text-station-muted">
+        <span class="status-dot status-dot-off" id="db-dot"></span> DB
+      </div>
+      <div class="flex items-center gap-1.5 text-station-muted">
+        <span class="status-dot status-dot-off" id="mqtt-dot"></span> MQTT
+      </div>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP32 Weather Monitoring System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/output.css" />
+</head>
+<body class="min-h-screen">
+
+  <%- include('partials/header') %>
+
+  <main class="max-w-6xl mx-auto px-5 py-8 space-y-8">
+
+    <!-- Device info strip -->
+    <section class="panel px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-8 font-mono text-sm flex-wrap">
+        <div>
+          <p class="text-station-muted text-xs uppercase tracking-widest">Device ID</p>
+          <p id="device-id" class="text-station-text">&mdash;</p>
+        </div>
+        <div>
+          <p class="text-station-muted text-xs uppercase tracking-widest">Last Received</p>
+          <p id="last-received" class="text-station-text">&mdash;</p>
+        </div>
+      </div>
+      <div id="updated-flag" class="font-mono text-xs text-amber-signal opacity-0 transition-opacity duration-500">● UPDATED</div>
+    </section>
+
+    <!-- Metric cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+      <div class="panel p-5" id="card-temperature">
+        <p class="text-xs uppercase tracking-widest text-station-muted">Temperature</p>
+        <p class="reading-value text-amber-signal mt-2"><span id="val-temperature">&mdash;</span><span class="text-lg text-station-muted ml-1">&deg;C</span></p>
+        <p class="text-xs text-station-muted mt-2 font-mono">updated <span id="time-temperature">&mdash;</span></p>
+      </div>
+
+      <div class="panel p-5" id="card-humidity">
+        <p class="text-xs uppercase tracking-widest text-station-muted">Humidity</p>
+        <p class="reading-value text-cyan-signal mt-2"><span id="val-humidity">&mdash;</span><span class="text-lg text-station-muted ml-1">%</span></p>
+        <p class="text-xs text-station-muted mt-2 font-mono">updated <span id="time-humidity">&mdash;</span></p>
+      </div>
+
+      <div class="panel p-5" id="card-aqi">
+        <p class="text-xs uppercase tracking-widest text-station-muted">Air Quality Index</p>
+        <p class="reading-value text-station-text mt-2"><span id="val-aqi">&mdash;</span></p>
+        <p class="text-xs mt-2 font-mono"><span id="aqi-label" class="px-1.5 py-0.5 rounded-sm border border-station-line text-station-muted">&mdash;</span></p>
+      </div>
+
+      <div class="panel p-5" id="card-rainfall">
+        <p class="text-xs uppercase tracking-widest text-station-muted">Rainfall</p>
+        <p class="reading-value text-cyan-signal mt-2"><span id="val-rainfall">&mdash;</span><span class="text-lg text-station-muted ml-1">mm</span></p>
+        <p class="text-xs text-station-muted mt-2 font-mono">updated <span id="time-rainfall">&mdash;</span></p>
+      </div>
+
+    </section>
+
+    <!-- History table -->
+    <section class="panel overflow-hidden">
+      <div class="px-5 py-4 border-b border-station-line flex items-center justify-between">
+        <h2 class="font-display text-base tracking-wide">Recent Readings</h2>
+        <p class="text-xs text-station-muted font-mono">newest first &middot; showing up to 50</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm font-mono">
+          <thead>
+            <tr class="text-left text-station-muted text-xs uppercase tracking-widest border-b border-station-line">
+              <th class="px-5 py-3">Timestamp</th>
+              <th class="px-5 py-3">Device ID</th>
+              <th class="px-5 py-3">Temp (&deg;C)</th>
+              <th class="px-5 py-3">Humidity (%)</th>
+              <th class="px-5 py-3">AQI</th>
+              <th class="px-5 py-3">Rainfall (mm)</th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+            <tr>
+              <td colspan="6" class="px-5 py-6 text-center text-station-muted">Loading history&hellip;</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <%- include('partials/footer') %>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>
