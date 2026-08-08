@@ -82,6 +82,20 @@ async function getLatestFeatures(req, res, next) {
   }
 }
 
+/**
+ * GET /api/weather/features/history
+ * Returns paginated weather features history.
+ */
+async function getFeatureHistory(req, res, next) {
+  try {
+    const { page, limit, offset } = req.pagination;
+    const result = await weatherService.fetchFeatureHistory({ page, limit, offset });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // ─── Weather Predictions ─────────────────────────────────────────────────────
 
 /**
@@ -138,7 +152,9 @@ module.exports = {
   getById,
   getStats,
   getLatestFeatures,
+  getFeatureHistory,
   getLatestPrediction,
   getDashboard,
   getHealth,
 };
+

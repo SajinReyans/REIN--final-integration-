@@ -9,6 +9,7 @@ const { validatePagination }    = require("../middleware/validator");
 
 router.get("/noise/dashboard",            noiseController.getDashboard);
 router.get("/noise/features/latest",      noiseController.getLatestFeatures);
+router.get("/noise/features/history",     validatePagination, noiseController.getFeatureHistory);
 router.get("/noise/predictions/latest",   noiseController.getLatestPrediction);
 
 router.get("/noise/readings/recent",      noiseController.getRecentReadings);

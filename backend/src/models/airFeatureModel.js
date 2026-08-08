@@ -94,8 +94,37 @@ async function getFeaturesByReadingId(readingId) {
   return rows[0] || null;
 }
 
+/**
+ * Returns paginated air quality feature history with total count.
+ * @param {object} params - { limit, offset }
+ * @returns {Promise<{ rows: object[], total: number }>}
+ */
+async function getHistory({ limit = 20, offset = 0 } = {}) {
+  const dataQuery = `
+    SELECT
+      id, air_reading_id, timestamp, aqi, aqi_category,
+      dominant_pollutant, air_health_score, air_alerts, created_at
+    FROM air_quality_features
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2;
+  `;
+  const countQuery = `SELECT COUNT(*)::int AS total FROM air_quality_features;`;
+
+  const [dataRes, countRes] = await Promise.all([
+    pool.query(dataQuery, [limit, offset]),
+    pool.query(countQuery),
+  ]);
+
+  return {
+    rows: dataRes.rows,
+    total: countRes.rows[0]?.total || 0,
+  };
+}
+
 module.exports = {
   insertFeatures,
   getLatestFeatures,
   getFeaturesByReadingId,
+  getHistory,
 };
+

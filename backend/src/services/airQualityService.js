@@ -158,6 +158,24 @@ async function fetchLatestFeatures() {
   return airFeatureModel.getLatestFeatures();
 }
 
+/**
+ * Returns paginated air feature history.
+ * @param {object} params - { page, limit, offset }
+ * @returns {Promise<object>}
+ */
+async function fetchFeatureHistory({ page, limit, offset }) {
+  const { rows, total } = await airFeatureModel.getHistory({ limit, offset });
+  return {
+    data: rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    },
+  };
+}
+
 // ─── Air Quality Predictions ─────────────────────────────────────────────────
 
 /**
@@ -198,6 +216,8 @@ module.exports = {
   fetchFloorComparison,
   fetchRecentReadings,
   fetchLatestFeatures,
+  fetchFeatureHistory,
   fetchLatestPrediction,
   fetchDashboard,
 };
+

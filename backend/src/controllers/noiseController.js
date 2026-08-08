@@ -63,6 +63,16 @@ async function getLatestFeatures(req, res, next) {
   }
 }
 
+async function getFeatureHistory(req, res, next) {
+  try {
+    const { page, limit, offset } = req.pagination;
+    const result = await noiseService.fetchFeatureHistory({ page, limit, offset });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // ─── Noise Predictions ──────────────────────────────────────────────────────
 
 async function getLatestPrediction(req, res, next) {
@@ -94,6 +104,8 @@ module.exports = {
   getRecentReadings,
   getById,
   getLatestFeatures,
+  getFeatureHistory,
   getLatestPrediction,
   getDashboard,
 };
+

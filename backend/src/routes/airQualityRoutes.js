@@ -10,6 +10,7 @@ const { validatePagination }  = require("../middleware/validator");
 
 router.get("/air/dashboard",            airQualityController.getDashboard);
 router.get("/air/features/latest",      airQualityController.getLatestFeatures);
+router.get("/air/features/history",     validatePagination, airQualityController.getFeatureHistory);
 router.get("/air/predictions/latest",   airQualityController.getLatestPrediction);
 
 router.get("/air/readings/floors",      airQualityController.getFloorComparison);

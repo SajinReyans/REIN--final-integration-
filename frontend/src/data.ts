@@ -6,6 +6,7 @@ export const pageTitles: Record<PageKey, string> = {
   weather:    'Weather',
   air:        'Air Quality',
   noise:      'Noise',
+  'engineered-features': 'Engineered Features',
   management: 'Sensor Management',
   analytics:  'Analytics',
   ai:         'AI Insights',

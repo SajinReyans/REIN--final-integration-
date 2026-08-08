@@ -107,6 +107,24 @@ async function fetchLatestFeatures() {
   return weatherFeaturesModel.getLatestFeatures();
 }
 
+/**
+ * Returns paginated weather feature history.
+ * @param {object} params - { page, limit, offset }
+ * @returns {Promise<object>}
+ */
+async function fetchFeatureHistory({ page, limit, offset }) {
+  const { rows, total } = await weatherFeaturesModel.getHistory({ limit, offset });
+  return {
+    data: rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    },
+  };
+}
+
 // ─── Weather Predictions ─────────────────────────────────────────────────────
 
 /**
@@ -146,6 +164,8 @@ module.exports = {
   fetchById,
   fetchStats,
   fetchLatestFeatures,
+  fetchFeatureHistory,
   fetchLatestPrediction,
   fetchDashboard,
 };
+

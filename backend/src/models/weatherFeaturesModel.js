@@ -87,8 +87,43 @@ async function getFeaturesByReadingId(readingId) {
   return rows[0] || null;
 }
 
+/**
+ * Returns paginated weather feature history with total count.
+ * @param {object} params - { limit, offset }
+ * @returns {Promise<{ rows: object[], total: number }>}
+ */
+async function getHistory({ limit = 20, offset = 0 } = {}) {
+  const dataQuery = `
+    SELECT
+      id,
+      weather_reading_id,
+      timestamp,
+      heat_index,
+      dew_point,
+      weather_status,
+      rain_alert,
+      created_at
+    FROM weather_features
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2;
+  `;
+  const countQuery = `SELECT COUNT(*)::int AS total FROM weather_features;`;
+
+  const [dataRes, countRes] = await Promise.all([
+    pool.query(dataQuery, [limit, offset]),
+    pool.query(countQuery),
+  ]);
+
+  return {
+    rows: dataRes.rows,
+    total: countRes.rows[0]?.total || 0,
+  };
+}
+
 module.exports = {
   insertFeatures,
   getLatestFeatures,
   getFeaturesByReadingId,
+  getHistory,
 };
+

@@ -83,6 +83,19 @@ async function fetchLatestFeatures() {
   return noiseFeatureModel.getLatestFeatures();
 }
 
+async function fetchFeatureHistory({ page, limit, offset }) {
+  const { rows, total } = await noiseFeatureModel.getHistory({ limit, offset });
+  return {
+    data: rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    },
+  };
+}
+
 // ─── Noise Predictions ──────────────────────────────────────────────────────
 
 async function fetchLatestPrediction() {
@@ -112,6 +125,8 @@ module.exports = {
   fetchById,
   fetchRecentReadings,
   fetchLatestFeatures,
+  fetchFeatureHistory,
   fetchLatestPrediction,
   fetchDashboard,
 };
+

@@ -88,8 +88,37 @@ async function getFeaturesByReadingId(readingId) {
   return rows[0] || null;
 }
 
+/**
+ * Returns paginated noise feature history with total count.
+ * @param {object} params - { limit, offset }
+ * @returns {Promise<{ rows: object[], total: number }>}
+ */
+async function getHistory({ limit = 20, offset = 0 } = {}) {
+  const dataQuery = `
+    SELECT
+      id, noise_reading_id, timestamp, noise_status, noise_category,
+      noise_alerts, noise_health_score, created_at
+    FROM noise_features
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2;
+  `;
+  const countQuery = `SELECT COUNT(*)::int AS total FROM noise_features;`;
+
+  const [dataRes, countRes] = await Promise.all([
+    pool.query(dataQuery, [limit, offset]),
+    pool.query(countQuery),
+  ]);
+
+  return {
+    rows: dataRes.rows,
+    total: countRes.rows[0]?.total || 0,
+  };
+}
+
 module.exports = {
   insertFeatures,
   getLatestFeatures,
   getFeaturesByReadingId,
+  getHistory,
 };
+

@@ -4,6 +4,8 @@ export type PageKey =
   | 'weather'
   | 'air'
   | 'noise'
+  | 'engineered-features'
   | 'management'
   | 'analytics'
   | 'ai';
+

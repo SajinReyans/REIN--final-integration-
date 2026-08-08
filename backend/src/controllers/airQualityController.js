@@ -98,6 +98,20 @@ async function getLatestFeatures(req, res, next) {
   }
 }
 
+/**
+ * GET /api/air/features/history
+ * Returns paginated air quality features history.
+ */
+async function getFeatureHistory(req, res, next) {
+  try {
+    const { page, limit, offset } = req.pagination;
+    const result = await airQualityService.fetchFeatureHistory({ page, limit, offset });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // ─── Air Quality Predictions ─────────────────────────────────────────────────
 
 /**
@@ -139,6 +153,8 @@ module.exports = {
   getRecentReadings,
   getById,
   getLatestFeatures,
+  getFeatureHistory,
   getLatestPrediction,
   getDashboard,
 };
+

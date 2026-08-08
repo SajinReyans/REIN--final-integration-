@@ -12,6 +12,7 @@ const { validatePagination } = require("../middleware/validator");
 
 router.get("/weather/dashboard",            weatherController.getDashboard);
 router.get("/weather/features/latest",      weatherController.getLatestFeatures);
+router.get("/weather/features/history",     validatePagination, weatherController.getFeatureHistory);
 router.get("/weather/predictions/latest",   weatherController.getLatestPrediction);
 router.get("/weather/stats",                weatherController.getStats);
 router.get("/weather/latest",               weatherController.getLatest);

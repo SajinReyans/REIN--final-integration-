@@ -7,6 +7,7 @@ import { CampusMap } from './pages/CampusMap';
 import { WeatherPage } from './pages/WeatherPage';
 import { AirPage } from './pages/AirPage';
 import { NoisePage } from './pages/NoisePage';
+import { EngineeredFeaturesPage } from './pages/EngineeredFeaturesPage';
 import { Management } from './pages/Management';
 import { Analytics } from './pages/Analytics';
 import { AIInsights } from './pages/AIInsights';
@@ -38,7 +39,7 @@ export default function App() {
 
   useEffect(() => {
     const envPage =
-      !showLanding && (page === 'weather' || page === 'air' || page === 'noise' || page === 'dashboard');
+      !showLanding && (page === 'weather' || page === 'air' || page === 'noise' || page === 'engineered-features' || page === 'dashboard');
     document.body.classList.toggle('weather-page', envPage);
     return () => document.body.classList.remove('weather-page');
   }, [page, showLanding]);
@@ -50,13 +51,14 @@ export default function App() {
       case 'weather': return <WeatherPage />;
       case 'air': return <AirPage />;
       case 'noise': return <NoisePage />;
+      case 'engineered-features': return <EngineeredFeaturesPage />;
       case 'management': return <Management />;
       case 'analytics': return <Analytics />;
       case 'ai': return <AIInsights />;
     }
   };
 
-  const envBleed = page === 'weather' || page === 'air' || page === 'noise' || page === 'dashboard';
+  const envBleed = page === 'weather' || page === 'air' || page === 'noise' || page === 'engineered-features' || page === 'dashboard';
   const appVisible = revealing || !showLanding;
 
   return (

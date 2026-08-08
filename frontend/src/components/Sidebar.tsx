@@ -10,6 +10,7 @@ const navGroups = [
       { key: 'weather'   as PageKey, label: 'Weather',    icon: <path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4-2A5 5 0 0 0 6.5 19h11z"/> },
       { key: 'air'       as PageKey, label: 'Air Quality', icon: <><path d="M4 8h11a3 3 0 1 0-3-3"/><path d="M2 13h15a3 3 0 1 1-3 3"/><path d="M4 18h9a2.5 2.5 0 1 1-2.5 2.5"/></> },
       { key: 'noise'     as PageKey, label: 'Noise',      icon: <><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></> },
+      { key: 'engineered-features' as PageKey, label: 'Engineered Features', icon: <><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/></> },
     ],
   },
   {
