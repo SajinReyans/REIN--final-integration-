@@ -1,14 +1,3 @@
-# REIN Integrated Project
-
-## Data flow
-
-ESP32 sensors publish JSON to MQTT topics. The Node.js backend validates and stores the data in PostgreSQL. The React dashboard requests the combined dashboard endpoints every 3 seconds, so new sensor readings and computed features appear automatically.
-
-- Weather MQTT topic: `weather/data`
-- Air MQTT topic: `air-quality/data`
-- Noise MQTT topic: `noise/data`
-- Backend: `http://localhost:5000`
-- Frontend: `http://localhost:5173`
 
 ## First-time setup
 
