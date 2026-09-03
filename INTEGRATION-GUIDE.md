@@ -1,18 +1,4 @@
 
-## First-time setup
-
-1. Copy `backend/.env.example` to `backend/.env`.
-2. Enter the PostgreSQL and MQTT settings.
-3. From the project root, run:
-
-```powershell
-npm install
-npm run install:all
-npm run dev
-```
-
-## Main API connections
-
 - `/api/weather/dashboard`
 - `/api/air/dashboard`
 - `/api/noise/dashboard`
